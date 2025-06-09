@@ -1,1 +1,22 @@
-.idea
+.venv
+*.sqlite3
+*.DS_Store
+.vscode/
+node_modules/
+.env
+static/main.css
+
+# Caches
+__pycache__/
+.pytest_cache
+.ruff_cache
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# PyCharm
+.idea/
