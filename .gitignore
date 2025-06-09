@@ -20,3 +20,6 @@ coverage.xml
 
 # PyCharm
 .idea/
+
+# Claude 
+.claude/
