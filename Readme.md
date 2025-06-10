@@ -1,6 +1,6 @@
 # Official Django Polls Tutorial Code
 
-Source code for the [official Django Polls tutorial](https://docs.djangoproject.com/en/5.1/intro/), which assumes you already have a virtual environment with Django installed.
+Source code for the [official Django Polls tutorial](https://docs.djangoproject.com/en/5.2/intro/), which assumes you already have a virtual environment with Django installed.
 
 ## How to Create a Virtual Environment
 From [the command line](https://learndjango.com/tutorials/terminal-command-line-beginners) these are the commands for a new virtual environment named `.venv` in Windows or macOS. 
