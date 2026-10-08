@@ -1,3 +1,15 @@
+"""
+Django settings for mysite project.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/6.1/topics/settings/
+
+For the full list of settings and their values, see
+https://docs.djangoproject.com/en/6.1/ref/settings/
+"""
+
+import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -13,7 +25,11 @@ SECRET_KEY = "django-insecure-x(6m7nf&%n4wtjibz34izlm6b&lnf61csr4j=3rgm!u34pbx1u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+TESTING = "test" in sys.argv or "PYTEST_VERSION" in os.environ
+
 ALLOWED_HOSTS = []
+
+INTERNAL_IPS = ["127.0.0.1", "::1"]
 
 
 # Application definition
@@ -38,6 +54,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+if DEBUG and not TESTING:
+    INSTALLED_APPS += ["debug_toolbar"]
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+
 ROOT_URLCONF = "mysite.urls"
 
 TEMPLATES = [
@@ -47,7 +67,6 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
-                "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
@@ -106,7 +125,11 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/6.1/ref/settings/#default-auto-field
+# Email
+# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    },
+}
