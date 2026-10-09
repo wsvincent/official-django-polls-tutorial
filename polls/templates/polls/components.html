@@ -1,0 +1,174 @@
+{% extends "polls/base.html" %}
+{% load static %}
+
+{% block title %}Component showcase · Polls{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'polls/components.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="showcase" x-data="pollShowcase"
+     data-api-url="{% url 'polls-api:poll-list' %}"
+     data-detail-url="{% url 'polls:detail' 0 %}">
+    <header class="site-header">
+        <a class="brand" href="{% url 'polls:index' %}">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            polls<span class="brand-dot">.</span>
+        </a>
+        <nav aria-label="Main navigation">
+            <a href="{% url 'polls:index' %}">All polls <span aria-hidden="true">↗</span></a>
+            <a href="{% url 'admin:index' %}">Manage polls <span aria-hidden="true">↗</span></a>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        <section class="intro" aria-labelledby="page-title">
+            <div>
+                <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Component showcase</p>
+                <h1 id="page-title">Every opinion<br>has a little <em>impact.</em></h1>
+                <p class="intro-copy">Find a question. Explore the results. Add your voice.</p>
+            </div>
+            <div class="stats" x-cloak x-show="!loading && !error && polls.length">
+                <div><strong x-text="polls.length"></strong><span>published polls</span></div>
+                <div><strong x-text="formatNumber(totalVotes)"></strong><span>votes cast</span></div>
+            </div>
+        </section>
+
+        <noscript>
+            <p class="notice">Enable JavaScript to explore these components, or <a href="{% url 'polls:index' %}">browse and vote in the polls</a>.</p>
+        </noscript>
+
+        <div class="component-grid" x-cloak>
+            <section class="panel poll-panel" aria-labelledby="polls-heading" :aria-busy="loading">
+                <div class="panel-heading">
+                    <div><p class="eyebrow">01 / Explore</p><h2 id="polls-heading">Pick a poll</h2></div>
+                    <span class="count-badge" x-text="polls.length + ' polls'"></span>
+                </div>
+                <label class="search-field">
+                    <span class="sr-only">Search polls</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path>
+                    </svg>
+                    <input type="search" x-model="search" placeholder="Find your next question…">
+                </label>
+                <p class="search-summary" aria-live="polite" x-show="!loading && !error && polls.length"
+                   x-text="filteredPolls.length + ' of ' + polls.length + ' polls'"></p>
+
+                <p class="notice" x-show="loading" role="status">Loading polls…</p>
+                <div class="notice notice-error" x-show="error" role="alert">
+                    <p x-text="error"></p>
+                    <button class="text-button" type="button" @click="loadPolls()" :disabled="loading">Try again</button>
+                </div>
+                <div class="empty-state" x-show="!loading && !error && !polls.length">
+                    <h3>A fresh start.</h3>
+                    <p>No polls are available yet. Create a published question and some choices in the admin, then refresh.</p>
+                    <a class="button button-primary" href="{% url 'admin:index' %}">Create a poll <span aria-hidden="true">↗</span></a>
+                </div>
+                <p class="notice" x-show="!loading && !error && polls.length && !filteredPolls.length">
+                    No polls match your search. Try a different word.
+                </p>
+
+                <div class="poll-list">
+                    <template x-for="poll in filteredPolls" :key="poll.id">
+                        <article class="poll-card" :class="{ 'is-selected': selectedPoll?.id === poll.id }">
+                            <div class="card-meta">
+                                <span x-text="formatDate(poll.pub_date)"></span>
+                                <span x-text="formatNumber(voteCount(poll)) + ' votes'"></span>
+                            </div>
+                            <h3 x-text="poll.question_text"></h3>
+                            <div class="card-footer">
+                                <span class="choice-count" x-text="poll.choices.length + ' choices'"></span>
+                                <div class="card-actions">
+                                    <button class="text-button" type="button" @click="openDetails(poll)"
+                                            :aria-label="'Details for ' + poll.question_text">Details</button>
+                                    <button class="button button-small" type="button" @click="selectPoll(poll)"
+                                            :aria-pressed="selectedPoll?.id === poll.id"
+                                            :aria-label="'Results for ' + poll.question_text">
+                                        Results <span aria-hidden="true">↗</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    </template>
+                </div>
+                <button class="refresh-button text-button" type="button" @click="loadPolls()" :disabled="loading">
+                    <span aria-hidden="true">↻</span> <span x-text="loading ? 'Refreshing…' : 'Refresh results'"></span>
+                </button>
+            </section>
+
+            <section class="panel results-panel" aria-labelledby="results-heading">
+                <div class="panel-heading">
+                    <div><p class="eyebrow">02 / The bigger picture</p><h2 id="results-heading">See where we stand</h2></div>
+                    <span class="chart-icon" aria-hidden="true">▥</span>
+                </div>
+                <p class="notice" x-show="!selectedPoll">Select a poll to explore its results.</p>
+                <div x-show="selectedPoll">
+                    <div class="results-title">
+                        <h3 x-text="selectedPoll?.question_text"></h3>
+                        <label class="chart-select">
+                            <span class="sr-only">Chart type</span>
+                            <select x-model="chartType" @change="renderChart()">
+                                <option value="bar">Bar chart</option>
+                                <option value="doughnut">Doughnut chart</option>
+                            </select>
+                        </label>
+                    </div>
+                    <p class="results-caption" x-text="formatNumber(voteCount(selectedPoll)) + ' votes · Every vote counts'"></p>
+                    <p class="notice" x-show="selectedPoll && !selectedPoll.choices.length">This poll has no choices yet.</p>
+                    <p class="notice" x-show="selectedPoll?.choices.length && !voteCount(selectedPoll)">No votes yet. Be the first to share your opinion.</p>
+                    <div class="chart-container" x-show="selectedPoll?.choices.length && (chartType === 'bar' || voteCount(selectedPoll) > 0)">
+                        <canvas x-ref="chart" role="img" :aria-label="'Vote results for ' + (selectedPoll?.question_text ?? '')">
+                            Vote counts are also listed in the table below.
+                        </canvas>
+                    </div>
+                    <table class="results-table" x-show="selectedPoll?.choices.length">
+                        <caption class="sr-only" x-text="'Vote counts for ' + (selectedPoll?.question_text ?? '')"></caption>
+                        <thead><tr><th scope="col">Choice</th><th scope="col">Votes</th><th scope="col">Share</th></tr></thead>
+                        <tbody>
+                            <template x-for="(choice, index) in (selectedPoll?.choices ?? [])" :key="choice.id">
+                                <tr>
+                                    <th scope="row"><span class="legend-dot" :style="{ backgroundColor: colorFor(index) }" aria-hidden="true"></span><span x-text="choice.choice_text"></span></th>
+                                    <td x-text="formatNumber(choice.votes)"></td>
+                                    <td x-text="voteShare(choice, selectedPoll) + '%'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div class="vote-callout" x-show="selectedPoll?.choices.length">
+                        <div><strong>Your turn.</strong><p>A small vote can make a difference.</p></div>
+                        <a class="button button-primary" :href="voteUrl(selectedPoll)">Cast your vote <span aria-hidden="true">↗</span></a>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <footer class="page-footer"><span>A little curiosity goes a long way.</span><a href="{% url 'polls:index' %}">Back to all polls <span aria-hidden="true">↗</span></a></footer>
+    </main>
+
+    <dialog class="details-dialog" x-ref="details" @close="detailPoll = null"
+            @click="if ($event.target === $event.currentTarget) $refs.details.close()"
+            aria-labelledby="details-title" x-cloak>
+        <div class="dialog-content">
+            <div class="dialog-heading">
+                <p class="eyebrow">A closer look</p>
+                <button class="close-button" type="button" @click="$refs.details.close()" aria-label="Close poll details" autofocus>×</button>
+            </div>
+            <h2 id="details-title" x-text="detailPoll?.question_text"></h2>
+            <p class="results-caption" x-text="detailPoll ? 'Published ' + formatDate(detailPoll.pub_date) + ' · ' + formatNumber(voteCount(detailPoll)) + ' votes' : ''"></p>
+            <ul class="detail-choices">
+                <template x-for="choice in (detailPoll?.choices ?? [])" :key="choice.id">
+                    <li><span x-text="choice.choice_text"></span><strong x-text="formatNumber(choice.votes) + ' votes'"></strong></li>
+                </template>
+            </ul>
+            <p class="notice" x-show="detailPoll && !detailPoll.choices.length">This poll has no choices yet.</p>
+            <a class="button button-primary" x-show="detailPoll?.choices.length" :href="voteUrl(detailPoll)">Cast your vote <span aria-hidden="true">↗</span></a>
+        </div>
+    </dialog>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="{% static 'polls/vendor/chartjs/chart-4.5.1.umd.min.js' %}"></script>
+<script defer src="{% static 'polls/components.js' %}"></script>
+<script defer src="{% static 'polls/vendor/alpinejs/alpine-3.17.4.min.js' %}"></script>
+{% endblock %}

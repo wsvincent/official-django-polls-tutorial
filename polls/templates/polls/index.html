@@ -6,6 +6,7 @@
 {% endblock %}
 
 {% block content %}
+<p><a href="{% url 'polls:components' %}">Explore the component showcase</a></p>
 {% if latest_question_list %}
     <ul>
     {% for question in latest_question_list %}
