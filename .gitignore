@@ -4,6 +4,9 @@
 .vscode/
 node_modules/
 .env
+.env.*
+!.env.example
+staticfiles/
 static/main.css
 
 # Caches

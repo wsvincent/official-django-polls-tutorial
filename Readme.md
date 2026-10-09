@@ -8,6 +8,10 @@ The project follows tutorial parts 1–8, including Django Debug Toolbar. The po
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run these commands from the project directory on Windows, macOS, or Linux:
 
+Copy `.env.example` to `.env` first. The example enables local development with
+SQLite; `.env` is ignored by Git. On macOS or Linux, run `cp .env.example .env`.
+On PowerShell, run `Copy-Item .env.example .env`.
+
 ```sh
 uv sync --locked
 uv run manage.py migrate
@@ -41,7 +45,7 @@ required. The showcase code lives in `polls/static/polls/components.js` and
 
 ## Development
 
-Django Debug Toolbar appears on HTML pages when browsing from localhost with `DEBUG = True`. It is installed with the development dependencies and disabled during tests. Click its handle on the right side of the page to inspect SQL queries, templates, and request details.
+Django Debug Toolbar appears on HTML pages when browsing from localhost with `DEBUG = True`. It is included in the application dependencies and disabled during tests. Click its handle on the right side of the page to inspect SQL queries, templates, and request details.
 
 Run the tests and Django's system checks:
 
@@ -57,6 +61,20 @@ uv run black .
 ```
 
 Use `uv add <package>` for application dependencies and `uv add --dev <package>` for development tools. Commit both `pyproject.toml` and `uv.lock` after changing dependencies.
+Regenerate the PaaS requirements file after changing application dependencies:
+
+```sh
+uv export --locked --no-dev --no-hashes --no-emit-project --output-file requirements.txt
+```
+
+## Production deployment
+
+The [deployment guide](docs/deployment.md) covers native Python deployment on a PaaS,
+managed PostgreSQL, required environment variables, migrations, and health checks.
+Production defaults disable debug mode and require a strong secret key, explicit
+allowed hosts, and PostgreSQL. Gunicorn serves the application, while WhiteNoise
+serves compressed static files with content hashes for caching.
+The PaaS dependency install includes Django Debug Toolbar and `psycopg[binary]`.
 
 ## Want Help Learning Django?
 Check out [LearnDjango](https://learndjango.com) for dozens of free tutorials and premium courses to help you master web development with Python and Django.
