@@ -75,19 +75,25 @@ For a provider with uv available, use:
 | Pre-deploy/release | `sh scripts/release.sh` |
 | Start | `sh scripts/start.sh` |
 
-Set production environment variables for all three phases. The build installs
-only locked application dependencies, collects static files, and runs Django's
-deployment checks. The start command runs Gunicorn; migrations are separate so
-each replica does not attempt to change the schema on startup.
+Set production environment variables for release and runtime. The build installs
+locked application dependencies and collects static files. `collectstatic` can
+run without a secret key, allowed hosts, or database URL when the platform keeps
+those variables out of the build environment. Its placeholder settings apply
+only to that command; server startup and migrations still require the production
+values. The release script runs Django's deployment checks before applying
+migrations. The start command runs Gunicorn.
 
 For a platform that installs packages with pip, use the committed
 `requirements.txt` and this build command:
 
 ```sh
 pip install -r requirements.txt && \
-    python manage.py collectstatic --noinput && \
-    python manage.py check --deploy --fail-level WARNING
+    python manage.py collectstatic --noinput
 ```
+
+If the platform installs dependencies automatically from `uv.lock` or
+`requirements.txt`, the build command is just `python manage.py collectstatic
+--noinput`.
 
 Use `sh scripts/start.sh` and `sh scripts/release.sh` for start and release;
 they use `.venv` when it exists, otherwise the platform's Python environment.

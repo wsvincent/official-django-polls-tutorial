@@ -20,6 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 TESTING = "test" in sys.argv or "PYTEST_VERSION" in os.environ
+COLLECTING_STATIC = Path(sys.argv[0]).name in {
+    "manage.py",
+    "django-admin",
+} and sys.argv[1:2] == ["collectstatic"]
 
 env = environ.Env()
 if (BASE_DIR / ".env").is_file():
@@ -32,6 +36,12 @@ if DEBUG or TESTING:
     SECRET_KEY = env(
         "DJANGO_SECRET_KEY", default="django-insecure-local-development-only"
     )
+elif COLLECTING_STATIC:
+    # Asset collection does not sign sessions or use the application database.
+    SECRET_KEY = env(
+        "DJANGO_SECRET_KEY",
+        default="static-build-placeholder-never-use-this-as-a-runtime-secret",
+    )
 else:
     SECRET_KEY = env("DJANGO_SECRET_KEY")
     if len(SECRET_KEY) < 50 or SECRET_KEY.startswith("django-insecure-"):
@@ -39,9 +49,14 @@ else:
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
-    default=["localhost", "127.0.0.1", "[::1]"] if DEBUG else [],
+    default=["localhost", "127.0.0.1", "[::1]"] if DEBUG or COLLECTING_STATIC else [],
 )
-if not DEBUG and not TESTING and (not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS):
+if (
+    not DEBUG
+    and not TESTING
+    and not COLLECTING_STATIC
+    and (not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS)
+):
     raise ImproperlyConfigured("Set DJANGO_ALLOWED_HOSTS to explicit production hosts.")
 
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
@@ -114,6 +129,8 @@ WSGI_APPLICATION = "mysite.wsgi.application"
 
 if DEBUG or TESTING:
     database = env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+elif COLLECTING_STATIC:
+    database = env.db("DATABASE_URL", default="sqlite:///:memory:")
 else:
     database = env.db("DATABASE_URL")
     if database["ENGINE"] != "django.db.backends.postgresql":

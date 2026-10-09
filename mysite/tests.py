@@ -1,7 +1,7 @@
 import os
-import runpy
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured
@@ -10,7 +10,7 @@ from django.urls import reverse
 
 
 class ProductionSettingsTests(SimpleTestCase):
-    def load_settings(self, **overrides):
+    def load_settings(self, argv=None, **overrides) -> dict[str, Any]:
         environment = {
             "DJANGO_SECRET_KEY": "production-test-key-with-at-least-fifty-characters-1234567890",
             "DJANGO_ALLOWED_HOSTS": "polls.example.com",
@@ -22,10 +22,49 @@ class ProductionSettingsTests(SimpleTestCase):
         }
         with (
             patch.dict(os.environ, environment, clear=True),
-            patch.object(sys, "argv", ["gunicorn"]),
+            patch.object(sys, "argv", argv if argv is not None else ["gunicorn"]),
             patch("environ.Env.read_env"),
         ):
-            return runpy.run_path(str(Path(__file__).with_name("settings.py")))
+            settings_path = Path(__file__).with_name("settings.py")
+            configuration: dict[str, Any] = {"__file__": str(settings_path)}
+            # Preserve the management command's argv, which runpy replaces.
+            exec(
+                compile(settings_path.read_text(), str(settings_path), "exec"),
+                configuration,
+            )
+            return configuration
+
+    def test_collectstatic_works_without_runtime_environment_variables(self):
+        configuration = self.load_settings(
+            argv=["manage.py", "collectstatic", "--noinput"],
+            DJANGO_SECRET_KEY=None,
+            DJANGO_ALLOWED_HOSTS=None,
+            DATABASE_URL=None,
+        )
+
+        self.assertFalse(configuration["DEBUG"])
+        self.assertFalse(configuration["TESTING"])
+        self.assertTrue(configuration["COLLECTING_STATIC"])
+        self.assertEqual(configuration["DATABASES"]["default"]["NAME"], ":memory:")
+        self.assertEqual(
+            configuration["STORAGES"]["staticfiles"]["BACKEND"],
+            "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        )
+
+    def test_static_defaults_do_not_apply_to_runtime_or_release_commands(self):
+        commands = (
+            ["gunicorn", "mysite.wsgi:application"],
+            ["gunicorn", "collectstatic"],
+            ["gunicorn", "mysite.wsgi:application", "--name", "collectstatic"],
+            ["manage.py", "check", "--deploy"],
+            ["manage.py", "migrate", "--noinput"],
+        )
+        for argv in commands:
+            with (
+                self.subTest(argv=argv),
+                self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY"),
+            ):
+                self.load_settings(argv=argv, DJANGO_SECRET_KEY=None)
 
     def test_production_defaults_require_https_and_postgresql(self):
         configuration = self.load_settings()
